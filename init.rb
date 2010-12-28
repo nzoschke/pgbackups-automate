@@ -12,6 +12,7 @@ module PGBackups
       params = {:backup_url => backup_url, :backup_name => backup_name}
       resource.put(params)
     end
+  end
 end
 
 module Heroku::Command
