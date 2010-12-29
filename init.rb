@@ -17,6 +17,10 @@ end
 
 module Heroku::Command
   class Pgbackups
+    Heroku::Command::Help.group("pgbackups") do |group|
+      group.command "pgbackups:automate [<DB_ID>]",               "begin capturing automatic backups for database ID (default: DATABASE_URL)"
+    end
+
     def index
       user # pre-fetch
       backups = []
