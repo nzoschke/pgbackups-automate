@@ -31,11 +31,12 @@ module Heroku::Command
 
       if backups.empty?
         display("No backups. Capture one with `heroku pgbackups:capture`.")
+        automatic_summary
       else
         display Display.new.render([["ID", "Backup Time", "Size", "Database"]], backups)
+        display ""
+        automatic_summary
       end
-
-      automatic_summary
     end
 
     def user
@@ -54,31 +55,38 @@ module Heroku::Command
       return unless automatic_plan?
 
       backup_name ||= user['backup_name']
-
-      if backup_name.empty?
-        display("Warning: no database configured to capture scheduled backups from. User `heroku pgbackups:automate` to configure.")
-      end
-
       from_name, from_url = resolve_db_id(backup_name, :default => "DATABASE_URL")
+      auto_transfers = transfers.select { |t| t["to_name"] =~ /SCHEDULED/ }
 
       db_display = from_name
       db_display += " (DATABASE_URL)" if from_name != "DATABASE_URL" && config_vars[from_name] == config_vars["DATABASE_URL"]
 
-      auto_transfers = transfers.select { |t| t["to_name"] =~ /SCHEDULED/ }
-      last = auto_transfers.last["finished_at"] || "none yet"
-      display("\nCapturing automatic backups from #{db_display}")
-      display("Last automated backup captured: #{last}")
+      if backup_name
+        display("Capturing automatic backups from #{db_display}")
+        last = auto_transfers.empty? ? "None yet" : Time.parse(auto_transfers.last["finished_at"])
+        current = auto_transfers.empty? ? Time.now : last
+        if user['plan'] == 'hourly'
+          nxt = Time.local(current.year, current.month, current.day, current.hour, 11)
+          if nxt < current
+            nxt = Time.local(current.year, current.month, current.day, current.hour + 1, 11)
+          end
+        elsif user['plan'] == 'daily'
+          nxt = Time.local(current.year, current.month, current.day, 23, 0)
+          if nxt < current
+            nxt = Time.local(current.year, current.month, current.day + 1, 23, 0)
+          end
+        else
+          nxt = "Unknown"
+        end
+      else
+        display("Not capturing #{user['plan']} automatic backups. Use `heroku pgbackups:automate` to configure.")
+        last = "Not configured"
+        nxt = "Never"
+      end
 
-      # t = Time.new.getutc
-      # t = Time.parse(auto_transfers.last["finished_at"]) unless auto_transfers.last["finished_at"].empty?
-      # 
-      # if user['plan'] == 'hourly'
-      #   t = Time.utc(t.year, t.month, t.day, t.hour + 1, 0)
-      # elsif user['plan'] == 'daily'
-      #   t = Time.utc(t.year, t.month, t.day, 11, 0)
-      # end
-      # 
-      # display("Next automated backup scheduled for approximately: #{t}")
+      nxt = nxt.strftime("%Y/%m/%d %H:%M %Z") if nxt.is_a? Time
+      display("Last automated backup captured: #{last}")
+      display("Next automated backup scheduled for approximately: #{nxt}")
     end
 
     def automate
