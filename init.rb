@@ -84,6 +84,7 @@ module Heroku::Command
         nxt = "Never"
       end
 
+      last = last.strftime("%Y/%m/%d %H:%M %Z") if last.is_a? Time
       nxt = nxt.strftime("%Y/%m/%d %H:%M %Z") if nxt.is_a? Time
       display("Last automated backup captured: #{last}")
       display("Next automated backup scheduled for approximately: #{nxt}")
