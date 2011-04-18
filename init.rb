@@ -4,7 +4,7 @@ module PGBackups
   class Client
     def get_user
       resource = authenticated_resource("/client/user")
-      JSON.parse resource.get.body
+      OkJson.decode resource.get.body
     end
 
     def update_user(backup_url, backup_name)
